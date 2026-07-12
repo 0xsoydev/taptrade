@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: taptrade-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: ANCHOR_PROVIDER_URL
+        sync: false
+      - key: WALLET_SECRET_KEY
+        sync: false
+      - key: GAME_WALLET_ADDRESS
+        sync: false
+      - key: USDC_MINT
+        value: 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
+      - key: TXLINE_API_BASE_URL
+        value: https://txline-dev.txodds.com/api
+      - key: TXLINE_PROGRAM_ID
+        value: 6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J
+      - key: TXL_MINT
+        value: 4Zao8ocPhmMgq7PdsYWyxvqySMGx7xb9cMftPMkEokRG
+      - key: DATABASE_URL
+        value: file:/data/txodds-tap.db
+    disk:
+      name: taptrade-db
+      mountPath: /data
+      sizeGB: 1

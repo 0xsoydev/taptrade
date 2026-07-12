@@ -1,0 +1,40 @@
+{
+  "name": "txodds-tap-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "api:e2e": "tsx scripts/api_e2e.ts",
+    "test": "vitest",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.14.0",
+    "@solana/spl-token": "^0.4.12",
+    "@solana/web3.js": "^1.91.9",
+    "axios": "^1.12.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "drizzle-orm": "^0.39.0",
+    "eventsource": "^4.0.0",
+    "express": "^4.21.0",
+    "socket.io": "^4.8.0",
+    "tsx": "^4.19.0",
+    "tweetnacl": "^1.0.3",
+    "ws": "^8.21.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.13.4",
+    "@types/ws": "^8.18.1",
+    "drizzle-kit": "^0.30.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.0"
+  }
+}
