@@ -35,6 +35,9 @@ function fmtTime(): string {
   return `[${hh}:${mm}:${ss}:${ms}]`;
 }
 
+const port = Number(process.env.PORT) || 3001;
+httpServer.listen(port, () => console.log(`${fmtTime()} server listening on :${port}`));
+
 async function main() {
   const { apiToken, jwt, axios: txlineClient } = await setupTxline();
   console.log(`${fmtTime()} TxLINE API token acquired`);
@@ -115,9 +118,6 @@ async function main() {
   const stopStream = startOddsStream(apiToken, jwt, io, fixtureNames);
   const stopOnchain = await startOnchainOdds(io, fixtureNames);
   const stopKeeper = startKeeper();
-
-  const port = process.env.PORT ?? 3001;
-  httpServer.listen(port, () => console.log(`${fmtTime()} server listening on :${port}`));
 
   process.on('SIGINT', () => {
     stopStream();
