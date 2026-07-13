@@ -7,11 +7,11 @@ CREATE TABLE "bets" (
 	"row" integer DEFAULT 0 NOT NULL,
 	"min_pct" real NOT NULL,
 	"max_pct" real NOT NULL,
-	"window_start" integer NOT NULL,
-	"window_end" integer NOT NULL,
-	"stake_lamports" integer NOT NULL,
-	"payout_lamports" integer NOT NULL,
-	"actual_payout_lamports" integer,
+	"window_start" bigint NOT NULL,
+	"window_end" bigint NOT NULL,
+	"stake_lamports" bigint NOT NULL,
+	"payout_lamports" bigint NOT NULL,
+	"actual_payout_lamports" bigint,
 	"status" text DEFAULT 'open' NOT NULL,
 	"tx_signature" text,
 	"settled_at" timestamp
@@ -19,8 +19,8 @@ CREATE TABLE "bets" (
 --> statement-breakpoint
 CREATE TABLE "leaderboard" (
 	"wallet" text PRIMARY KEY NOT NULL,
-	"total_wagered" integer DEFAULT 0 NOT NULL,
-	"total_won" integer DEFAULT 0 NOT NULL,
+	"total_wagered" bigint DEFAULT 0 NOT NULL,
+	"total_won" bigint DEFAULT 0 NOT NULL,
 	"total_bets" integer DEFAULT 0 NOT NULL,
 	"wins" integer DEFAULT 0 NOT NULL
 );
@@ -50,7 +50,7 @@ CREATE TABLE "odds_ticks" (
 	"pct_home" real NOT NULL,
 	"pct_draw" real,
 	"pct_away" real NOT NULL,
-	"ts" integer NOT NULL,
+	"ts" bigint NOT NULL,
 	"in_running" boolean DEFAULT false NOT NULL
 );
 --> statement-breakpoint

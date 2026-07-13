@@ -1,5 +1,5 @@
 {
-  "id": "bf495c98-560c-4012-a056-0517d8919327",
+  "id": "d6b44fc7-1532-4254-a1ea-c95275f857ff",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -59,31 +59,31 @@
         },
         "window_start": {
           "name": "window_start",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "window_end": {
           "name": "window_end",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "stake_lamports": {
           "name": "stake_lamports",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "payout_lamports": {
           "name": "payout_lamports",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "actual_payout_lamports": {
           "name": "actual_payout_lamports",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": false
         },
@@ -127,14 +127,14 @@
         },
         "total_wagered": {
           "name": "total_wagered",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true,
           "default": 0
         },
         "total_won": {
           "name": "total_won",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true,
           "default": 0
@@ -310,7 +310,7 @@
         },
         "ts": {
           "name": "ts",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },

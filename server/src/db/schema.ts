@@ -1,4 +1,4 @@
-import { pgTable, integer, text, real, boolean, timestamp, index, serial } from 'drizzle-orm/pg-core';
+import { pgTable, integer, bigint, text, real, boolean, timestamp, index, serial } from 'drizzle-orm/pg-core';
 
 export const matches = pgTable('matches', {
   id: integer('id').primaryKey(),
@@ -24,7 +24,7 @@ export const oddsTicks = pgTable('odds_ticks', {
   pctHome: real('pct_home').notNull(),
   pctDraw: real('pct_draw'),
   pctAway: real('pct_away').notNull(),
-  ts: integer('ts').notNull(),
+  ts: bigint('ts', { mode: 'number' }).notNull(),
   inRunning: boolean('in_running').notNull().default(false),
 }, (table) => ({
   oddsTicksMatchIdx: index('odds_ticks_match_idx').on(table.matchId, table.marketType, table.ts),
@@ -39,11 +39,11 @@ export const bets = pgTable('bets', {
   row: integer('row').notNull().default(0),
   minPct: real('min_pct').notNull(),
   maxPct: real('max_pct').notNull(),
-  windowStart: integer('window_start').notNull(),
-  windowEnd: integer('window_end').notNull(),
-  stakeLamports: integer('stake_lamports').notNull(),
-  payoutLamports: integer('payout_lamports').notNull(),
-  actualPayoutLamports: integer('actual_payout_lamports'),
+  windowStart: bigint('window_start', { mode: 'number' }).notNull(),
+  windowEnd: bigint('window_end', { mode: 'number' }).notNull(),
+  stakeLamports: bigint('stake_lamports', { mode: 'number' }).notNull(),
+  payoutLamports: bigint('payout_lamports', { mode: 'number' }).notNull(),
+  actualPayoutLamports: bigint('actual_payout_lamports', { mode: 'number' }),
   status: text('status').notNull().default('open'),
   txSignature: text('tx_signature'),
   settledAt: timestamp('settled_at', { mode: 'date' }),
@@ -51,8 +51,8 @@ export const bets = pgTable('bets', {
 
 export const leaderboard = pgTable('leaderboard', {
   wallet: text('wallet').primaryKey(),
-  totalWagered: integer('total_wagered').notNull().default(0),
-  totalWon: integer('total_won').notNull().default(0),
+  totalWagered: bigint('total_wagered', { mode: 'number' }).notNull().default(0),
+  totalWon: bigint('total_won', { mode: 'number' }).notNull().default(0),
   totalBets: integer('total_bets').notNull().default(0),
   wins: integer('wins').notNull().default(0),
 });
