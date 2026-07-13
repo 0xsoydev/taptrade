@@ -4,7 +4,7 @@ services:
     runtime: node
     rootDir: server
     buildCommand: npm install
-    startCommand: npx drizzle-kit push --force && npm start
+    startCommand: npx drizzle-kit migrate && npm start
     envVars:
       - key: NODE_ENV
         value: production
@@ -29,8 +29,4 @@ services:
       - key: ORDERBOOK_WS
         value: wss://ws-subscriptions-clob.polymarket.com/ws/market
       - key: DATABASE_URL
-        value: file:/data/txodds-tap.db
-    disk:
-      name: taptrade-db
-      mountPath: /data
-      sizeGB: 1
+        sync: false

@@ -1,19 +1,19 @@
-import { sqliteTable, integer, text, real } from 'drizzle-orm/sqlite-core';
+import { pgTable, integer, text, real, boolean, timestamp, index, serial } from 'drizzle-orm/pg-core';
 
-export const matches = sqliteTable('matches', {
+export const matches = pgTable('matches', {
   id: integer('id').primaryKey(),
   txlineFixtureId: integer('txline_fixture_id').notNull().unique(),
   homeTeam: text('home_team').notNull(),
   awayTeam: text('away_team').notNull(),
   competition: text('competition').notNull(),
-  startTime: integer('start_time', { mode: 'timestamp' }).notNull(),
+  startTime: timestamp('start_time', { mode: 'date' }).notNull(),
   status: text('status').notNull().default('scheduled'),
   onchainEventSlug: text('onchain_event_slug'),
   onchainTokenIds: text('onchain_token_ids'),
 });
 
-export const oddsTicks = sqliteTable('odds_ticks', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const oddsTicks = pgTable('odds_ticks', {
+  id: serial('id').primaryKey(),
   matchId: integer('match_id').notNull(),
   marketType: text('market_type').notNull(),
   marketParams: text('market_params'),
@@ -25,15 +25,17 @@ export const oddsTicks = sqliteTable('odds_ticks', {
   pctDraw: real('pct_draw'),
   pctAway: real('pct_away').notNull(),
   ts: integer('ts').notNull(),
-  inRunning: integer('in_running', { mode: 'boolean' }).notNull().default(false),
-});
+  inRunning: boolean('in_running').notNull().default(false),
+}, (table) => ({
+  oddsTicksMatchIdx: index('odds_ticks_match_idx').on(table.matchId, table.marketType, table.ts),
+}));
 
-export const bets = sqliteTable('bets', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  userWallet: text('user_wallet').notNull(), // external wallet pubkey
+export const bets = pgTable('bets', {
+  id: serial('id').primaryKey(),
+  userWallet: text('user_wallet').notNull(),
   matchId: integer('match_id').notNull(),
   marketType: text('market_type').notNull(),
-  targetOutcome: text('target_outcome').notNull(), // home / draw / away
+  targetOutcome: text('target_outcome').notNull(),
   row: integer('row').notNull().default(0),
   minPct: real('min_pct').notNull(),
   maxPct: real('max_pct').notNull(),
@@ -41,13 +43,13 @@ export const bets = sqliteTable('bets', {
   windowEnd: integer('window_end').notNull(),
   stakeLamports: integer('stake_lamports').notNull(),
   payoutLamports: integer('payout_lamports').notNull(),
-  actualPayoutLamports: integer('actual_payout_lamports'), // ponytail: null = not yet paid, retry on keeper tick
-  status: text('status').notNull().default('open'), // open / won / lost
+  actualPayoutLamports: integer('actual_payout_lamports'),
+  status: text('status').notNull().default('open'),
   txSignature: text('tx_signature'),
-  settledAt: integer('settled_at', { mode: 'timestamp' }),
+  settledAt: timestamp('settled_at', { mode: 'date' }),
 });
 
-export const leaderboard = sqliteTable('leaderboard', {
+export const leaderboard = pgTable('leaderboard', {
   wallet: text('wallet').primaryKey(),
   totalWagered: integer('total_wagered').notNull().default(0),
   totalWon: integer('total_won').notNull().default(0),
