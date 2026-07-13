@@ -1,5 +1,5 @@
 import { and, eq, gte, lt, lte, isNull, or } from 'drizzle-orm';
-import { Connection, PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
+import { Connection, SystemProgram, Transaction } from '@solana/web3.js';
 import { db } from './db/index.js';
 import { bets, oddsTicks, leaderboard } from './db/schema.js';
 import { getTreasuryKeypair, deriveAbstractedKeypair } from './wallet.js';
@@ -17,19 +17,32 @@ const OUTCOME_FIELD = {
 async function checkHit(bet: typeof bets.$inferSelect): Promise<boolean> {
   const field = OUTCOME_FIELD[bet.targetOutcome as keyof typeof OUTCOME_FIELD];
 
+  // For 1X2_PARTICIPANT_RESULT, only match full-match ticks (marketPeriod IS NULL)
+  // to stay consistent with what the chart displays to the user.
+  const periodFilter = bet.marketType === '1X2_PARTICIPANT_RESULT'
+    ? isNull(oddsTicks.marketPeriod)
+    : undefined;
+
+  const filters = [
+    eq(oddsTicks.matchId, bet.matchId),
+    eq(oddsTicks.marketType, bet.marketType),
+    gte(oddsTicks.ts, bet.windowStart),
+    lte(oddsTicks.ts, bet.windowEnd),
+  ];
+  if (periodFilter) filters.push(periodFilter);
+
   const ticks = await db.query.oddsTicks.findMany({
-    where: and(
-      eq(oddsTicks.matchId, bet.matchId),
-      eq(oddsTicks.marketType, bet.marketType),
-      gte(oddsTicks.ts, bet.windowStart),
-      lte(oddsTicks.ts, bet.windowEnd),
-    ),
+    where: and(...filters),
   });
 
   for (const row of ticks) {
     const value = row[field] as number | null;
-    if (value != null && value >= bet.minPct && value <= bet.maxPct) return true;
+    if (value != null && value >= bet.minPct && value <= bet.maxPct) {
+      console.log(`[keeper] bet ${bet.id} HIT: tick ${row.id} ${field}=${value} in [${bet.minPct}, ${bet.maxPct}]`);
+      return true;
+    }
   }
+  console.log(`[keeper] bet ${bet.id} MISS: ${ticks.length} ticks checked in [${bet.windowStart}, ${bet.windowEnd}], range [${bet.minPct}, ${bet.maxPct}]`);
   return false;
 }
 
@@ -40,9 +53,16 @@ async function sendPayout(betId: number, externalWallet: string, amountLamports:
     const tx = new Transaction().add(
       SystemProgram.transfer({ fromPubkey: treasuryWallet.publicKey, toPubkey: recipient, lamports: amountLamports }),
     );
-    await sendAndConfirmTransaction(connection, tx, [treasuryWallet]);
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+    tx.recentBlockhash = blockhash;
+    tx.feePayer = treasuryWallet.publicKey;
+    tx.sign(treasuryWallet);
+    const raw = await connection.sendRawTransaction(tx.serialize(), { skipPreflight: false, maxRetries: 3 });
+    await connection.confirmTransaction({ signature: raw, blockhash, lastValidBlockHeight }, 'confirmed');
+    console.log(`[keeper] payout sent: bet ${betId} -> ${recipient.toBase58()} (${amountLamports} lamports) sig: ${raw}`);
     return true;
-  } catch {
+  } catch (err: any) {
+    console.error(`[keeper] payout failed for bet ${betId}:`, err.message ?? err);
     return false;
   }
 }
@@ -55,15 +75,21 @@ export async function settleBets(): Promise<void> {
     where: and(eq(bets.status, 'open'), lt(bets.windowEnd, now)),
   });
 
+  if (expired.length > 0) {
+    console.log(`[keeper] settling ${expired.length} expired bet(s)...`);
+  }
+
   for (const bet of expired) {
     const hit = await checkHit(bet);
     if (hit) {
       // Mark won but don't settle payout yet — let the retry pass handle it
       await db.update(bets).set({ status: 'won' }).where(eq(bets.id, bet.id));
       await updateLeaderboard(bet.userWallet, bet.stakeLamports, bet.payoutLamports, true);
+      console.log(`[keeper] bet ${bet.id} → WON (payout ${bet.payoutLamports} lamports pending)`);
     } else {
       await db.update(bets).set({ status: 'lost', settledAt: new Date() }).where(eq(bets.id, bet.id));
       await updateLeaderboard(bet.userWallet, bet.stakeLamports, 0, false);
+      console.log(`[keeper] bet ${bet.id} → LOST`);
     }
   }
 
