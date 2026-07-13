@@ -1,15 +1,16 @@
 import { Router } from 'express';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { Connection, PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
 import { z } from 'zod';
 import { db } from '../db/index.js';
 import { bets, leaderboard } from '../db/schema.js';
 import { eq, desc } from 'drizzle-orm';
+import { deriveAbstractedKeypair, getTreasuryKeypair, DEFAULT_STAKE_LAMPORTS } from '../wallet.js';
 
 const connection = new Connection(process.env.ANCHOR_PROVIDER_URL ?? 'https://api.devnet.solana.com', 'confirmed');
-const gameWallet = new PublicKey(process.env.GAME_WALLET_ADDRESS!);
+const treasuryWallet = getTreasuryKeypair();
 
 const postBetSchema = z.object({
-  userWallet: z.string(),
+  externalWallet: z.string(),
   matchId: z.number(),
   marketType: z.string(),
   targetOutcome: z.enum(['home', 'draw', 'away']),
@@ -18,27 +19,8 @@ const postBetSchema = z.object({
   maxPct: z.number(),
   windowStart: z.number(),
   windowEnd: z.number(),
-  stakeLamports: z.number(),
-  payoutLamports: z.number(),
-  txSignature: z.string(),
+  multiplier: z.number(),
 });
-
-async function verifySolTransfer(signature: string, expectedFrom: string, expectedAmountLamports: number): Promise<boolean> {
-  const tx = await connection.getParsedTransaction(signature, { commitment: 'confirmed', maxSupportedTransactionVersion: 0 });
-  if (!tx?.meta) return false;
-
-  const accountKeys = tx.transaction.message.accountKeys;
-  const gameIndex = accountKeys.findIndex((k) => k.pubkey.equals(gameWallet));
-  const senderIndex = accountKeys.findIndex((k) => k.pubkey.toBase58() === expectedFrom);
-  if (gameIndex === -1 || senderIndex === -1) return false;
-
-  const gameDiff = tx.meta.postBalances[gameIndex] - tx.meta.preBalances[gameIndex];
-  if (gameDiff !== expectedAmountLamports) return false;
-
-  // sender is the fee payer, so their balance drops by at least the transferred amount (plus fee)
-  const senderDiff = tx.meta.preBalances[senderIndex] - tx.meta.postBalances[senderIndex];
-  return senderDiff >= expectedAmountLamports;
-}
 
 const router = Router();
 
@@ -50,20 +32,60 @@ router.post('/', async (req, res) => {
   }
 
   const data = parsed.data;
-  const existing = await db.query.bets.findFirst({ where: eq(bets.txSignature, data.txSignature) });
-  if (existing) {
-    res.status(409).json({ error: 'duplicate bet' });
+
+  // ponytail: derive abstracted wallet from external pubkey
+  const abstracted = deriveAbstractedKeypair(data.externalWallet);
+  const abstractedAddr = abstracted.publicKey.toBase58();
+
+  // Check balance: need stake + rent-exempt minimum (0.00089 SOL) + fee (5000 lamports)
+  const balance = await connection.getBalance(abstracted.publicKey);
+  const minRequired = DEFAULT_STAKE_LAMPORTS + 890880 + 5000;
+  if (balance < minRequired) {
+    res.status(400).json({ error: 'insufficient balance', balance, minRequired });
     return;
   }
 
-  const valid = await verifySolTransfer(data.txSignature, data.userWallet, data.stakeLamports);
-  if (!valid) {
-    res.status(400).json({ error: 'invalid transfer' });
-    return;
-  }
+  // Server signs: abstracted wallet → treasury
+  const stakeLamports = DEFAULT_STAKE_LAMPORTS;
+  const payoutLamports = Math.round(stakeLamports * data.multiplier);
 
-  const [bet] = await db.insert(bets).values(data).returning();
-  res.json(bet);
+  try {
+    const tx = new Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: abstracted.publicKey,
+        toPubkey: treasuryWallet.publicKey,
+        lamports: stakeLamports,
+      }),
+    );
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+    tx.recentBlockhash = blockhash;
+    tx.feePayer = abstracted.publicKey;
+    tx.partialSign(abstracted);
+
+    // Fee is paid by abstracted wallet (deducted from stake amount)
+    const raw = await connection.sendRawTransaction(tx.serialize(), { skipPreflight: true });
+    await connection.confirmTransaction({ signature: raw, blockhash, lastValidBlockHeight }, 'confirmed');
+
+    const [bet] = await db.insert(bets).values({
+      userWallet: data.externalWallet,
+      matchId: data.matchId,
+      marketType: data.marketType,
+      targetOutcome: data.targetOutcome,
+      row: data.row,
+      minPct: data.minPct,
+      maxPct: data.maxPct,
+      windowStart: data.windowStart,
+      windowEnd: data.windowEnd,
+      stakeLamports,
+      payoutLamports,
+      status: 'open',
+      txSignature: raw,
+    }).returning();
+
+    res.json(bet);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message ?? 'bet failed' });
+  }
 });
 
 router.get('/leaderboard', async (_req, res) => {

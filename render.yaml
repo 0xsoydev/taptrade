@@ -4,7 +4,7 @@ services:
     runtime: node
     rootDir: server
     buildCommand: npm install
-    startCommand: npm start
+    startCommand: npx drizzle-kit push --force && npm start
     envVars:
       - key: NODE_ENV
         value: production
@@ -14,16 +14,20 @@ services:
         sync: false
       - key: WALLET_SECRET_KEY
         sync: false
-      - key: GAME_WALLET_ADDRESS
+      - key: ABSTRACTED_WALLET_MASTER_SEED
         sync: false
-      - key: USDC_MINT
-        value: 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
       - key: TXLINE_API_BASE_URL
         value: https://txline-dev.txodds.com/api
       - key: TXLINE_PROGRAM_ID
         value: 6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J
       - key: TXL_MINT
         value: 4Zao8ocPhmMgq7PdsYWyxvqySMGx7xb9cMftPMkEokRG
+      - key: EVENT_API
+        value: https://gamma-api.polymarket.com
+      - key: ORDERBOOK_API
+        value: https://clob.polymarket.com
+      - key: ORDERBOOK_WS
+        value: wss://ws-subscriptions-clob.polymarket.com/ws/market
       - key: DATABASE_URL
         value: file:/data/txodds-tap.db
     disk:

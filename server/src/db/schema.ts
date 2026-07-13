@@ -30,7 +30,7 @@ export const oddsTicks = sqliteTable('odds_ticks', {
 
 export const bets = sqliteTable('bets', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  userWallet: text('user_wallet').notNull(),
+  userWallet: text('user_wallet').notNull(), // external wallet pubkey
   matchId: integer('match_id').notNull(),
   marketType: text('market_type').notNull(),
   targetOutcome: text('target_outcome').notNull(), // home / draw / away
@@ -41,8 +41,9 @@ export const bets = sqliteTable('bets', {
   windowEnd: integer('window_end').notNull(),
   stakeLamports: integer('stake_lamports').notNull(),
   payoutLamports: integer('payout_lamports').notNull(),
-  status: text('status').notNull().default('open'),
-  txSignature: text('tx_signature').notNull().unique(),
+  actualPayoutLamports: integer('actual_payout_lamports'), // ponytail: null = not yet paid, retry on keeper tick
+  status: text('status').notNull().default('open'), // open / won / lost
+  txSignature: text('tx_signature'),
   settledAt: integer('settled_at', { mode: 'timestamp' }),
 });
 

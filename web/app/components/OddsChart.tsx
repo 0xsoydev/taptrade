@@ -26,9 +26,10 @@ type PlacedBet = {
 type Props = {
   ticks: OddsTick[];
   matchId?: number;
-  onSelectSquare: (square: GridSquare) => void;
+  onBet: (square: GridSquare) => void;
   placedBets?: PlacedBet[];
   selectedOutcome: 'home' | 'away' | 'draw';
+  hasBalance: boolean;
 };
 
 const SQUARE_INTERVAL_MS = 5000;
@@ -109,7 +110,7 @@ function deriveSigma0(paddedRange: number, fullDurationMs: number): number {
 
 // ── Component ───────────────────────────────────────
 
-export function OddsChart({ ticks, onSelectSquare, placedBets = [], selectedOutcome }: Props) {
+export function OddsChart({ ticks, onBet, placedBets = [], selectedOutcome, hasBalance }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [durationSec, setDurationSec] = useState<typeof DURATIONS[number]>(60);
   const [hoveredSquare, setHoveredSquare] = useState<string | null>(null);
@@ -492,7 +493,7 @@ export function OddsChart({ ticks, onSelectSquare, placedBets = [], selectedOutc
                   key={`${sq.targetTime}-${sq.row}`}
                   onMouseEnter={() => setHoveredSquare(`${sq.targetTime}-${sq.row}`)}
                   onMouseLeave={() => setHoveredSquare(null)}
-                  onClick={() => onSelectSquare(sq)}
+                  onClick={() => hasBalance && onBet(sq)}
                   className="cursor-pointer"
                 >
                   <rect
@@ -500,21 +501,59 @@ export function OddsChart({ ticks, onSelectSquare, placedBets = [], selectedOutc
                     y={y1}
                     width={colWidth}
                     height={rowHeight}
-                    fill={bgFill}
-                    stroke="none"
+                    fill={isHovered ? 'rgba(233, 91, 140, 0.2)' : 'transparent'}
+                    stroke={isHovered ? '#E95B8C' : 'none'}
                     strokeWidth="1"
                   />
-                  <text
-                    x={x + colWidth / 2}
-                    y={y1 + rowHeight / 2 + 4}
-                    fill={txtColor}
-                    fontSize="13"
-                    fontWeight="400"
-                    textAnchor="middle"
-                    className="pointer-events-none"
-                  >
-                    {sq.multiplier >= 100 ? '100x' : `${sq.multiplier.toFixed(2)}x`}
-                  </text>
+                  {isHovered ? (
+                    <g>
+                      <text
+                        x={x + colWidth / 2}
+                        y={y1 + rowHeight / 2 - 6}
+                        fill="#FFFFFF"
+                        fontSize="11"
+                        fontWeight="600"
+                        textAnchor="middle"
+                        className="pointer-events-none"
+                      >
+                        0.001 SOL
+                      </text>
+                      <text
+                        x={x + colWidth / 2}
+                        y={y1 + rowHeight / 2 + 8}
+                        fill="#E95B8C"
+                        fontSize="13"
+                        fontWeight="800"
+                        textAnchor="middle"
+                        className="pointer-events-none"
+                      >
+                        {sq.multiplier.toFixed(2)}x
+                      </text>
+                      <text
+                        x={x + colWidth / 2}
+                        y={y1 + rowHeight / 2 + 24}
+                        fill={hasBalance ? '#00E676' : '#9C818C'}
+                        fontSize="10"
+                        fontWeight="700"
+                        textAnchor="middle"
+                        className="pointer-events-none"
+                      >
+                        {hasBalance ? 'BET' : 'NO BALANCE'}
+                      </text>
+                    </g>
+                  ) : (
+                    <text
+                      x={x + colWidth / 2}
+                      y={y1 + rowHeight / 2 + 4}
+                      fill={multColor}
+                      fontSize="13"
+                      fontWeight="400"
+                      textAnchor="middle"
+                      className="pointer-events-none"
+                    >
+                      {sq.multiplier >= 100 ? '100x' : `${sq.multiplier.toFixed(2)}x`}
+                    </text>
+                  )}
                 </g>
               );
             })}

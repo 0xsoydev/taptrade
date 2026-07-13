@@ -11,6 +11,7 @@ import { startOnchainOdds } from './onchain_odds/index.js';
 import healthRouter from './routes/health.js';
 import betsRouter from './routes/bets.js';
 import fixturesRouter from './routes/fixtures.js';
+import walletsRouter from './routes/wallets.js';
 import { db } from './db/index.js';
 
 const app = express();
@@ -20,6 +21,7 @@ const io = new Server(httpServer, { cors: { origin: '*' } });
 app.use(cors());
 app.use(express.json());
 app.use('/health', healthRouter);
+app.use('/wallets', walletsRouter);
 app.use('/bets', betsRouter);
 app.use('/fixtures', fixturesRouter);
 
