@@ -4,7 +4,7 @@ services:
     runtime: node
     rootDir: server
     buildCommand: npm install
-    startCommand: npx drizzle-kit migrate && npm start
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
