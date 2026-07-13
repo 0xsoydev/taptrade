@@ -57,6 +57,12 @@ export default function Home() {
   const [depositing, setDepositing] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Win notification state
+  type WinInfo = { multiplier: number; payout: number; outcome: 'home' | 'away' | 'draw' };
+  const [winNotification, setWinNotification] = useState<WinInfo | null>(null);
+  const seenWinsRef = useRef<Set<string>>(new Set());
+  const prevBetStatusRef = useRef<Map<string, BetStatus>>(new Map());
+
   const { ticks } = useOddsStream(selectedMatch?.id);
 
   // Fetch abstracted wallet on connect
@@ -113,15 +119,37 @@ export default function Home() {
         .then((r) => r.json() as Promise<BackendBet[]>)
         .then((bets) => {
           const forMatch = bets.filter((b) => b.matchId === selectedMatch.id);
-          setPlacedBets(
-            forMatch.map((b) => ({
-              row: b.row,
-              targetTime: b.windowEnd,
-              outcome: b.targetOutcome,
-              status: b.status,
-              multiplier: b.payoutLamports / b.stakeLamports,
-            })),
-          );
+          const mapped = forMatch.map((b) => ({
+            row: b.row,
+            targetTime: b.windowEnd,
+            outcome: b.targetOutcome,
+            status: b.status,
+            multiplier: b.payoutLamports / b.stakeLamports,
+          }));
+
+          // Detect newly won bets
+          for (const bet of mapped) {
+            const key = `${bet.targetTime}-${bet.row}-${bet.outcome}`;
+            const prev = prevBetStatusRef.current.get(key);
+            if (bet.status === 'won' && prev && prev !== 'won' && !seenWinsRef.current.has(key)) {
+              seenWinsRef.current.add(key);
+              const stakeSol = 0.001;
+              setWinNotification({
+                multiplier: bet.multiplier,
+                payout: stakeSol * bet.multiplier,
+                outcome: bet.outcome,
+              });
+            }
+          }
+
+          // Update prev status map
+          const nextMap = new Map<string, BetStatus>();
+          for (const bet of mapped) {
+            nextMap.set(`${bet.targetTime}-${bet.row}-${bet.outcome}`, bet.status);
+          }
+          prevBetStatusRef.current = nextMap;
+
+          setPlacedBets(mapped);
         })
         .catch(() => {});
     };
@@ -130,6 +158,13 @@ export default function Home() {
     const id = setInterval(load, 2000);
     return () => clearInterval(id);
   }, [publicKey, selectedMatch]);
+
+  // Auto-dismiss win notification
+  useEffect(() => {
+    if (!winNotification) return;
+    const timer = setTimeout(() => setWinNotification(null), 5000);
+    return () => clearTimeout(timer);
+  }, [winNotification]);
 
   const deposit = useCallback(async (solAmount: number) => {
     if (!publicKey || !signTransaction || !abstracted) return;
@@ -311,6 +346,59 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* ─── Win Notification Dialog ─────────────── */}
+      {winNotification && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setWinNotification(null)}
+          />
+          {/* Dialog */}
+          <div
+            className="relative bg-[#1a0e16] border border-[#00E676]/30 rounded-3xl px-10 py-8 shadow-2xl flex flex-col items-center gap-4 animate-[winPop_0.4s_ease-out]"
+            style={{
+              boxShadow: '0 0 60px rgba(0, 230, 118, 0.15), 0 0 120px rgba(0, 230, 118, 0.05)',
+            }}
+          >
+            {/* Glow ring */}
+            <div className="w-20 h-20 rounded-full flex items-center justify-center"
+              style={{ background: 'radial-gradient(circle, rgba(0,230,118,0.2) 0%, transparent 70%)' }}
+            >
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#00E676" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+            </div>
+
+            <div className="text-[#00E676] text-sm font-bold uppercase tracking-widest">You Won!</div>
+
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-white text-3xl font-black font-mono">
+                {winNotification.payout.toFixed(4)} SOL
+              </span>
+              <span className="text-[#9C818C] text-sm">
+                {winNotification.multiplier.toFixed(2)}x on{' '}
+                <span className="uppercase font-semibold" style={{
+                  color: winNotification.outcome === 'home' ? '#00E676'
+                    : winNotification.outcome === 'away' ? '#FF5252'
+                    : '#FFC107',
+                }}>
+                  {winNotification.outcome}
+                </span>
+              </span>
+            </div>
+
+            <button
+              onClick={() => setWinNotification(null)}
+              className="mt-2 px-6 py-2 rounded-full bg-[#00E676] text-black text-sm font-bold hover:brightness-110 transition-all"
+            >
+              Nice!
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
