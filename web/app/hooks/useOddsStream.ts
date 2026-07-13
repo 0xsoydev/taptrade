@@ -32,7 +32,7 @@ export function useOddsStream(matchId: number | undefined) {
   // ── History handler ──────────────────────────────
   const handleHistory = useCallback((history: OddsTick[]) => {
     console.log(`[ws] history received — ${history.length} ticks`);
-    setTicks(history);
+    setTicks([...history].sort((a, b) => a.ts - b.ts));
   }, []);
 
   // ── Live tick handler ────────────────────────────
@@ -45,7 +45,7 @@ export function useOddsStream(matchId: number | undefined) {
     );
 
     setTicks((prev) => {
-      const next = [...prev, tick];
+      const next = [...prev, tick].sort((a, b) => a.ts - b.ts);
       // Keep a rolling window of 500 ticks max
       return next.length > 500 ? next.slice(-500) : next;
     });

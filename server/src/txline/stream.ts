@@ -108,8 +108,8 @@ export function startOddsStream(
       const tick = normalizeOdds(payload);
       if (!tick) return;
 
-      // Persist every tick to the database
-      await db.insert(oddsTicks).values(tick);
+      // Persist every tick to the database (fire-and-forget)
+      db.insert(oddsTicks).values(tick).catch(() => {});
 
       // Only broadcast full-match 1X2 odds (marketPeriod === null)
       if (tick.marketType === '1X2_PARTICIPANT_RESULT' && tick.marketPeriod === null) {

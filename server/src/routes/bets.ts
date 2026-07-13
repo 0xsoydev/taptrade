@@ -63,8 +63,8 @@ router.post('/', async (req, res) => {
     tx.partialSign(abstracted);
 
     // Fee is paid by abstracted wallet (deducted from stake amount)
-    const raw = await connection.sendRawTransaction(tx.serialize(), { skipPreflight: true });
-    await connection.confirmTransaction({ signature: raw, blockhash, lastValidBlockHeight }, 'confirmed');
+    const raw = await connection.sendRawTransaction(tx.serialize(), { skipPreflight: true, maxRetries: 0 });
+    await connection.confirmTransaction({ signature: raw, blockhash, lastValidBlockHeight }, 'processed');
 
     const [bet] = await db.insert(bets).values({
       userWallet: data.externalWallet,

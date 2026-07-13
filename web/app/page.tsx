@@ -127,7 +127,7 @@ export default function Home() {
     };
 
     load();
-    const id = setInterval(load, 5000);
+    const id = setInterval(load, 2000);
     return () => clearInterval(id);
   }, [publicKey, selectedMatch]);
 
@@ -173,7 +173,7 @@ export default function Home() {
           row: square.row,
           minPct: square.yMin,
           maxPct: square.yMax,
-          windowStart: Date.now(),
+          windowStart: square.targetTime - 5000,
           windowEnd: square.targetTime,
           multiplier: square.multiplier,
         }),

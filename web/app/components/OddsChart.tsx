@@ -493,7 +493,7 @@ export function OddsChart({ ticks, onBet, placedBets = [], selectedOutcome, hasB
                   key={`${sq.targetTime}-${sq.row}`}
                   onMouseEnter={() => setHoveredSquare(`${sq.targetTime}-${sq.row}`)}
                   onMouseLeave={() => setHoveredSquare(null)}
-                  onClick={() => hasBalance && onBet(sq)}
+                  onDoubleClick={() => hasBalance && onBet(sq)}
                   className="cursor-pointer"
                 >
                   <rect

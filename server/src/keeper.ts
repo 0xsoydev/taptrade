@@ -2,7 +2,7 @@ import { and, eq, gte, lt, lte, isNull, or } from 'drizzle-orm';
 import { Connection, PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
 import { db } from './db/index.js';
 import { bets, oddsTicks, leaderboard } from './db/schema.js';
-import { getTreasuryKeypair } from './wallet.js';
+import { getTreasuryKeypair, deriveAbstractedKeypair } from './wallet.js';
 
 const connection = new Connection(process.env.ANCHOR_PROVIDER_URL ?? 'https://api.devnet.solana.com', 'confirmed');
 const treasuryWallet = getTreasuryKeypair();
@@ -33,9 +33,10 @@ async function checkHit(bet: typeof bets.$inferSelect): Promise<boolean> {
   return false;
 }
 
-async function sendPayout(betId: number, walletAddress: string, amountLamports: number): Promise<boolean> {
+async function sendPayout(betId: number, externalWallet: string, amountLamports: number): Promise<boolean> {
   try {
-    const recipient = new PublicKey(walletAddress);
+    const abstracted = deriveAbstractedKeypair(externalWallet);
+    const recipient = abstracted.publicKey;
     const tx = new Transaction().add(
       SystemProgram.transfer({ fromPubkey: treasuryWallet.publicKey, toPubkey: recipient, lamports: amountLamports }),
     );
@@ -105,7 +106,7 @@ async function updateLeaderboard(wallet: string, stakeLamports: number, payoutLa
   }
 }
 
-export function startKeeper(intervalMs = 5000): () => void {
+export function startKeeper(intervalMs = 2000): () => void {
   const id = setInterval(() => {
     settleBets().catch((err) => console.error('[keeper] error:', err));
   }, intervalMs);
